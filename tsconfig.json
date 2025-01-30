@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    "lib": ["es2023"],
+    "target": "es2022",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowUnreachableCode": false,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitReturns": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "module": "Node16",
+    "moduleResolution": "Node16",
+    "importHelpers": true,
+    "newLine": "lf",
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "incremental": true,
+    "declaration": false,
+    "declarationMap": false,
+    "outDir": "./dist",
+    "removeComments": true
+  },
+  "include": ["src", "test"]
+}
