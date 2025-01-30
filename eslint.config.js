@@ -1,4 +1,5 @@
 import js from "@eslint/js";
+import ts from "@typescript-eslint/eslint-plugin";
 import globals from "globals";
 
 import { includeIgnoreFile } from "@eslint/compat";
@@ -12,8 +13,9 @@ const gitignorePath = path.resolve(__dirname, ".gitignore");
 
 export default [
   includeIgnoreFile(gitignorePath),
-  eslintPluginPrettierRecommended,
   js.configs.recommended,
+  ts.configs.recommended,
+  eslintPluginPrettierRecommended,
   {
     files: ["**/*.ts", "**/*.js"],
     languageOptions: {
