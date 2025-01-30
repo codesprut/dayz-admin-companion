@@ -20,13 +20,15 @@ export default [
   importPlugin.flatConfigs.recommended,
   eslintPluginPrettierRecommended,
   {
-    files: ["*.ts", "*.js"],
+    files: ["**/*.ts", "**/*.js"],
     plugins: {
       "simple-import-sort": simpleImportSort,
     },
     settings: {
       "import/resolver": {
-        typescript: {},
+        typescript: {
+          project: "./tsconfig.json",
+        },
       },
     },
     languageOptions: {

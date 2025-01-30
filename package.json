@@ -4,7 +4,6 @@
   "description": "",
   "license": "MIT",
   "author": "codesprut",
-  "type": "module",
   "scripts": {
     "build": "npx tsc",
     "lint": "npm run lint:eslint && npm run lint:prettier",
