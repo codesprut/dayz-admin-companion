@@ -19,7 +19,7 @@ interface RconClientConfig {
 enum Event {
   LOGIN = "login",
   MESSAGE = "message",
-  DISCONNECT = "disconnect",
+  DISCONNECTED = "disconnected",
 }
 
 export class RconClient {
@@ -32,37 +32,19 @@ export class RconClient {
 
   private isConnected: boolean = false;
   private isLoginProcessing: boolean = false;
-  private loginCallback?: (success: boolean, error?: Error) => void;
+  private loginCallback?: (success: boolean) => void;
 
   private readonly keepAliveInterval: number;
   private keepAliveIntervalInstance?: NodeJS.Timeout;
-  private lastKeepaliveSequence: number = 0;
+  private lastKeepAliveSequence: number = 0;
 
   public constructor(private readonly config: RconClientConfig) {
     this.socket = dgram.createSocket("udp4");
     this.events = new EventEmitter();
 
-    this.keepAliveInterval = config.keepAliveInterval ?? 3000;
+    this.keepAliveInterval = config.keepAliveInterval ?? 5000;
 
     this.socket.on(Event.MESSAGE, msg => this.packetReceived(msg));
-
-    this.events.on(Event.DISCONNECT, () => {
-      this.unsetKeepAlive();
-      this.isConnected = false;
-    });
-
-    this.events.on(Event.LOGIN, (success: boolean, error?: Error) => {
-      this.isLoginProcessing = false;
-      this.isConnected = success;
-
-      if (this.loginCallback) {
-        this.loginCallback(success, error);
-      }
-
-      if (success) {
-        this.setupKeepAlive();
-      }
-    });
   }
 
   public login(): Promise<boolean> {
@@ -91,8 +73,7 @@ export class RconClient {
         }
       }, 5000);
 
-      this.loginCallback = (success, error) =>
-        error ? reject(error) : resolve(success);
+      this.loginCallback = success => resolve(success);
     });
   }
 
@@ -118,13 +99,40 @@ export class RconClient {
   }
 
   public onDisconnect(callback: () => void): void {
-    this.events.on(Event.DISCONNECT, () => callback());
+    this.events.on(Event.DISCONNECTED, () => callback());
+  }
+
+  private loginProcessFinished(success: boolean): void {
+    this.isLoginProcessing = false;
+    this.isConnected = success;
+
+    if (this.loginCallback) {
+      this.loginCallback(success);
+    }
+
+    if (success) {
+      this.setupKeepAlive();
+    }
+
+    this.events.emit(Event.LOGIN, success);
+  }
+
+  private disconnected(): void {
+    this.isConnected = false;
+    this.sequence = 0;
+    this.lastKeepAliveSequence = 0;
+    this.callbacks = [];
+    this.multipartPacket = [];
+
+    clearInterval(this.keepAliveIntervalInstance);
+
+    this.events.emit(Event.DISCONNECTED);
   }
 
   private setupKeepAlive(): void {
     this.keepAliveIntervalInstance = setInterval(() => {
-      if (this.lastKeepaliveSequence) {
-        this.events.emit(Event.DISCONNECT);
+      if (this.lastKeepAliveSequence) {
+        this.disconnected();
         return;
       }
 
@@ -132,10 +140,6 @@ export class RconClient {
 
       this.sendPacket(packet);
     }, this.keepAliveInterval);
-  }
-
-  private unsetKeepAlive(): void {
-    clearInterval(this.keepAliveIntervalInstance);
   }
 
   private packetReceived(buffer: Buffer) {
@@ -161,7 +165,7 @@ export class RconClient {
       case PacketType.LOGIN: {
         const isLoginSuccess = payload.readUInt8(2) == 1;
 
-        this.events.emit(Event.LOGIN, isLoginSuccess);
+        this.loginProcessFinished(isLoginSuccess);
         break;
       }
       case PacketType.COMMAND: {
@@ -172,9 +176,9 @@ export class RconClient {
         if (payload.length == 3) {
           if (
             payload.readUInt8(1) == 1 &&
-            payload.readUInt8(2) == this.lastKeepaliveSequence
+            payload.readUInt8(2) == this.lastKeepAliveSequence
           ) {
-            this.lastKeepaliveSequence = 0;
+            this.lastKeepAliveSequence = 0;
           }
         }
 
@@ -266,7 +270,7 @@ export class RconClient {
     data.writeUInt8(PacketType.COMMAND, 1);
     data.writeUInt8(this.sequence, 2);
 
-    this.lastKeepaliveSequence = this.sequence;
+    this.lastKeepAliveSequence = this.sequence;
 
     this.sequence = this.sequence >= 255 ? 0 : this.sequence + 1;
 
