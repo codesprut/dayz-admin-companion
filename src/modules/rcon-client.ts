@@ -87,6 +87,7 @@ export class RconClient {
         if (this.isLoginProcessing) {
           reject(new Error("Server didn't respond"));
           this.loginCallback = undefined;
+          this.isLoginProcessing = false;
         }
       }, 5000);
 
